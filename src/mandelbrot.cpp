@@ -140,7 +140,7 @@ void makePicturePNG(const int *data, int width, int height, int iterationsCount)
 }
 
 int main(int argc, char **argv) {
-    if (argc != 11) {
+    if (argc != 10) {
         cout << "-- MANDELBROT IMPLEMENTATION CPU --" << endl;
         cout << "ARG[0] - xStart" << endl;
         cout << "ARG[1] - yStart" << endl;

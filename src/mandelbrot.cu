@@ -211,7 +211,7 @@ int compare(const int *data1, const int *data2, int length) {
 }
 
 int main(int argc, char **argv) {
-    if (argc != 10) {
+    if (argc != 11) {
         cout << "------- MANDELBROT IMPLEMENTATION CUDA -------" << endl;
         cout << "ARG[0] - xStart" << endl;
         cout << "ARG[1] - yStart" << endl;

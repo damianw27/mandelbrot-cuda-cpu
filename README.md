@@ -1,6 +1,6 @@
 # Mandelbrot CUDA/CPU Implementation
 
-##Arguments
+## Arguments
 - xStart
 - yStart
 - xEnd
@@ -12,7 +12,7 @@
 - shouldGenerateImage
 - shouldUse2D
 
-##Execution command:
+## Execution command:
 
 ### For GPU version:
 > ./mandelbrot_gpu -1. -1. 1. 1. 3000 3000 256 0 1 1 > output.txt

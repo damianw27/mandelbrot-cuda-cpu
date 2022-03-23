@@ -14,8 +14,8 @@
 
 ## Execution command:
 
-### For GPU version:
+### For GPU version
 > ./mandelbrot_gpu -1. -1. 1. 1. 3000 3000 256 0 1 1 > output.txt
 
-### For CPU version:
-> ./mandelbrot_gpu -1. -1. 1. 1. 3000 3000 256 0 1 1 > output.txt
+### For CPU version
+> ./mandelbrot_cpu -1. -1. 1. 1. 3000 3000 256 0 1 1 > output.txt

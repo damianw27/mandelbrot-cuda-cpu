@@ -112,6 +112,72 @@ __global__ void cudaMandelbrot2(float x0, float y0, float x1, float y1, int widt
     }
 }
 
+int computeMandelbrot(float x0, float y0, float x1, float y1, int width, int height, int iterationsCount, int *data) {
+    float dX = (x1 - x0) / float(width - 1);
+    float dY = (y1 - y0) / float(height - 1);
+    float x, y, Zx, Zy, tZx;
+    int sum = 0;
+    int i;
+
+    for (int tmpWidth = 0; tmpWidth < height; tmpWidth++) {
+        for (int tmpHeight = 0; tmpHeight < width; tmpHeight++) {
+            x = x0 + (float) tmpHeight * dX;
+            y = y0 + (float) tmpWidth * dY;
+            Zx = x;
+            Zy = y;
+            i = 0;
+
+            while ((i < iterationsCount) && ((Zx * Zx + Zy * Zy) < 4)) {
+                tZx = Zx * Zx - Zy * Zy + x;
+                Zy = 2 * Zx * Zy + y;
+                Zx = tZx;
+
+                i++;
+            }
+
+            int index = tmpWidth * width + tmpHeight;
+            data[index] = i;
+            sum += i;
+        }
+    }
+
+    return sum;
+}
+
+
+int computeMandelbrot2(float x0, float y0, float x1, float y1, int width, int height, int iterationsCount, int *data) {
+    float dX = (x1 - x0) / float(width - 1);
+    float dY = (y1 - y0) / float(height - 1);
+    float x, y, Zx, Zy, tZx;
+    int sum = 0;
+    int i;
+    int size = width * height;
+    int tmpWidth, tmpHeight;
+
+    for (int index = 0; index < size; index++) {
+        tmpWidth = index / width;
+        tmpHeight = index % width;
+        x = x0 + (float) tmpHeight * dX;
+        y = y0 + (float) tmpWidth * dY;
+        Zx = x;
+        Zy = y;
+        i = 0;
+
+        while ((i < iterationsCount) && ((Zx * Zx + Zy * Zy) < 4)) {
+            tZx = Zx * Zx - Zy * Zy + x;
+            Zy = 2 * Zx * Zy + y;
+            Zx = tZx;
+
+            i++;
+        }
+
+        data[index] = i;
+        sum += i;
+    }
+
+    return sum;
+}
+
 void makePicturePNG(const int *data, int width, int height, int iterationsCount) {
     float red_value, green_value, blue_value;
     float scale = 256.0f / (float) iterationsCount;
@@ -240,7 +306,13 @@ int main(int argc, char **argv) {
     if (shouldCompare == 1) {
         printf("Computing reference\n");
         start = clock();
-//        int SUM = computeMandelbrot(x0, y0, x1, y1, width, height, iterationsCount, mandel_data_cpu);
+
+        if (shouldUse2D == 1) {
+            computeMandelbrot2(x0, y0, x1, y1, width, height, iterationsCount, mandel_data_cpu);
+        } else {
+            computeMandelbrot(x0, y0, x1, y1, width, height, iterationsCount, mandel_data_cpu);
+        }
+
         end = clock();
         printf("Time %lf s\n\n", 1.0f * (float) (end - start) / CLOCKS_PER_SEC);
         int ident = compare(mandel_data_host, mandel_data_cpu, height * width);

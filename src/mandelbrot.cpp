@@ -140,10 +140,18 @@ void makePicturePNG(const int *data, int width, int height, int iterationsCount)
 }
 
 int main(int argc, char **argv) {
-    if (argc != 10) {
-        printf("Wywołanie %s LD_Re, LD_Im, PG_Re, PG_Im, Poziom, Pion, Iteracje, Compare  Picture \n", argv[0]);
-        printf("Flagi:  Compare: 0/1 - porównaj rezultat z CPU lub nie\n");
-        printf("Flagi:  Picture: 0/1 - generuj obrazki lub nie \n");
+    if (argc != 11) {
+        cout << "-- MANDELBROT IMPLEMENTATION CPU --" << endl;
+        cout << "ARG[0] - xStart" << endl;
+        cout << "ARG[1] - yStart" << endl;
+        cout << "ARG[2] - xEnd" << endl;
+        cout << "ARG[3] - yEnd" << endl;
+        cout << "ARG[4] - width" << endl;
+        cout << "ARG[5] - height" << endl;
+        cout << "ARG[6] - iterationsCount" << endl;
+        cout << "ARG[7] - shouldGenerateImage" << endl;
+        cout << "ARG[8] - shouldUse2D" << endl;
+        cout << "Example usage: ./mandelbrot_cpu -1. -1. 1. 1. 3000 3000 256 1 1 > output.txt" << endl;
         exit(1);
     }
 
@@ -158,12 +166,13 @@ int main(int argc, char **argv) {
     int shouldUse2D = stoi(argv[9]);
     int *mandel_data = (int *) malloc(sizeof(int) * width * height);
 
-    printf("Corners - (%lf , %lf) and ", x0, y0);
-    printf("(%lf , %lf)\n", x1, y1);
+    cout << "Starting Mandelbrot (CPU)" << endl;
+    cout << "Corners - start = (" << x0 << ", " << y0 << "); end = (" << x1 << ", " << y1 << ");" << endl;
 
     time_t start = clock();
 
     if (shouldUse2D) {
+        cout << "Using version 2D of mandelbrot algorithm." << endl;
         computeMandelbrot(x0, y0, x1, y1, width, height, iterationsCount, mandel_data);
     } else {
         computeMandelbrot2(x0, y0, x1, y1, width, height, iterationsCount, mandel_data);
@@ -171,13 +180,13 @@ int main(int argc, char **argv) {
 
     time_t end = clock();
 
-    printf("Start %f End %f clock ticks\n", (float) start, (float) end);
-    printf("Computations and transfer %lf s\n\n", 1.0f * (float) (end - start) / CLOCKS_PER_SEC);
+    cout << "Computation ended in " << (float) (end - start) / CLOCKS_PER_SEC << "s" << endl;
 
     if (shouldGenerateImage == 1) {
         start = clock();
         makePicturePNG(mandel_data, width, height, iterationsCount);
         end = clock();
-        printf("Picture production took %lf s\n\n", 1.0f * (float) (end - start) / CLOCKS_PER_SEC);
+
+        cout << "Generation of image ended in " << (float) (end - start) / CLOCKS_PER_SEC << "s" << endl;
     }
 }

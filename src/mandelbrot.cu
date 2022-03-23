@@ -211,10 +211,19 @@ int compare(const int *data1, const int *data2, int length) {
 }
 
 int main(int argc, char **argv) {
-    if (argc != 11) {
-        printf("Wywołanie %s LD_Re, LD_Im, PG_Re, PG_Im, Poziom, Pion, Iteracje, Compare  Picture \n", argv[0]);
-        printf("Flagi:  Compare: 0/1 - porównaj rezultat z CPU lub nie\n");
-        printf("Flagi:  Picture: 0/1 - generuj obrazki lub nie \n");
+    if (argc != 10) {
+        cout << "------- MANDELBROT IMPLEMENTATION CUDA -------" << endl;
+        cout << "ARG[0] - xStart" << endl;
+        cout << "ARG[1] - yStart" << endl;
+        cout << "ARG[2] - xEnd" << endl;
+        cout << "ARG[3] - yEnd" << endl;
+        cout << "ARG[4] - width" << endl;
+        cout << "ARG[5] - height" << endl;
+        cout << "ARG[6] - iterationsCount" << endl;
+        cout << "ARG[7] - shouldCompareWithCPU" << endl;
+        cout << "ARG[8] - shouldGenerateImage" << endl;
+        cout << "ARG[9] - shouldUse2D" << endl;
+        cout << "Example usage: ./mandelbrot_gpu -1. -1. 1. 1. 3000 3000 256 0 1 1 > output.txt" << endl;
         exit(1);
     }
 
@@ -249,18 +258,18 @@ int main(int argc, char **argv) {
 
     time_t start, end;
 
-    printf("Corners - (%lf , %lf) and ", x0, y0);
-    printf("(%lf , %lf)\n", x1, y1);
+    cout << "Starting Mandelbrot (CUDA)" << endl;
+    cout << "Corners - start = (" << x0 << ", " << y0 << "); end = (" << x1 << ", " << y1 << ");" << endl;
 
     int block_width = 8;
     int block_height = 32;
     dim3 threadsPerBlock(block_width, block_height, 1);
     dim3 numBlocks(width / block_width + 1, height / block_height + 1, 1);
-
     start = clock();
     auto start2 = chrono::steady_clock::now();
 
     if (shouldUse2D) {
+        cout << "Using version 2D of mandelbrot algorithm." << endl;
         cudaMandelbrot2<<<numBlocks, threadsPerBlock, 0>>>(x0, y0, x1, y1, width, height, iterationsCount,mandel_data_device);
     } else {
         cudaMandelbrot<<<numBlocks, threadsPerBlock, 0>>>(x0, y0, x1, y1, width, height, iterationsCount,mandel_data_device);
@@ -282,20 +291,13 @@ int main(int argc, char **argv) {
 
     end = clock();
 
-    auto diff = stop - start2;
-
-    cout << "Kernel " << chrono::duration<float, milli>(diff).count() << " ms" << endl;
-    cout << "Kernel " << chrono::duration<float, micro>(diff).count() << " us" << endl;
-    cout << "Kernel " << chrono::duration<float, nano>(diff).count() << " ns" << endl;
-
-    printf("Start %f End %f clock ticks\n", (float) start, (float) end);
-    printf("Computations and transfer %lf s\n\n", 1.0f * (float) (end - start) / CLOCKS_PER_SEC);
+    cout << "Computation and data transfer ended in " << (float) (end - start) / CLOCKS_PER_SEC << "s" << endl;
 
     if (shouldGenerateImage == 1) {
         start = clock();
         makePicturePNG(mandel_data_host, width, height, iterationsCount);
         end = clock();
-        printf("Picture production took %lf s\n\n", 1.0f * (float) (end - start) / CLOCKS_PER_SEC);
+        cout << "Generation of image ended in " << (float) (end - start) / CLOCKS_PER_SEC << "s" << endl;
     }
 
     status = cudaFree(mandel_data_device);
@@ -304,7 +306,6 @@ int main(int argc, char **argv) {
     }
 
     if (shouldCompare == 1) {
-        printf("Computing reference\n");
         start = clock();
 
         if (shouldUse2D == 1) {
@@ -314,9 +315,12 @@ int main(int argc, char **argv) {
         }
 
         end = clock();
-        printf("Time %lf s\n\n", 1.0f * (float) (end - start) / CLOCKS_PER_SEC);
-        int ident = compare(mandel_data_host, mandel_data_cpu, height * width);
-        printf("%d out of %d pixels are identical (%8.2lf) %% \n", ident, height * width, 100.0 * ident / height / width);
+
+        int pixelsCount = height * width;
+        int samePixelsCount = compare(mandel_data_host, mandel_data_cpu, pixelsCount);
+        cout << "Comparing CUDA with CPU ended in " << (float) (end - start) / CLOCKS_PER_SEC << "s" << endl;
+        cout << "Comparison result in pixels: " << samePixelsCount << " out of " << pixelsCount << "pixels." << endl;
+        cout << "Comparison result in percentage: " << 100.0 * samePixelsCount / height / width << "%" << endl;
     }
 
     status = cudaFreeHost(mandel_data_host);

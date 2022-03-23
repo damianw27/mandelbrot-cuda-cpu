@@ -8,7 +8,7 @@
 - width
 - height
 - iterationsCount
-- shouldCompareWithCPU
+- shouldCompareWithCPU (not included in CPU version)
 - shouldGenerateImage
 - shouldUse2D
 
@@ -18,4 +18,4 @@
 > ./mandelbrot_gpu -1. -1. 1. 1. 3000 3000 256 0 1 1 > output.txt
 
 ### For CPU version
-> ./mandelbrot_cpu -1. -1. 1. 1. 3000 3000 256 0 1 1 > output.txt
+> ./mandelbrot_cpu -1. -1. 1. 1. 3000 3000 256 1 1 > output.txt

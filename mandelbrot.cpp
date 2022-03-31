@@ -10,7 +10,7 @@
 using namespace std;
 #endif
 
-const float colors[41][3] = {
+const double colors[41][3] = {
         {1.0,  1.0,   1.0},
         {1.0,  1.0,   1.0},
         {1.0,  1.0,   1.0},
@@ -54,17 +54,17 @@ const float colors[41][3] = {
         {0.0,  0.0,   0.0}
 };
 
-int computeMandelbrot(float x0, float y0, float x1, float y1, int width, int height, int iterationsCount, int *data) {
-    float dX = (x1 - x0) / float(width - 1);
-    float dY = (y1 - y0) / float(height - 1);
-    float x, y, Zx, Zy, tZx;
+int computeMandelbrot(double x0, double y0, double x1, double y1, int width, int height, int iterationsCount, int *data) {
+    double dX = (x1 - x0) / double(width - 1);
+    double dY = (y1 - y0) / double(height - 1);
+    double x, y, Zx, Zy, tZx;
     int sum = 0;
     int i;
 
     for (int tmpWidth = 0; tmpWidth < height; tmpWidth++) {
         for (int tmpHeight = 0; tmpHeight < width; tmpHeight++) {
-            x = x0 + (float) tmpHeight * dX;
-            y = y0 + (float) tmpWidth * dY;
+            x = x0 + (double) tmpHeight * dX;
+            y = y0 + (double) tmpWidth * dY;
             Zx = x;
             Zy = y;
             i = 0;
@@ -87,10 +87,10 @@ int computeMandelbrot(float x0, float y0, float x1, float y1, int width, int hei
 }
 
 
-int computeMandelbrot2(float x0, float y0, float x1, float y1, int width, int height, int iterationsCount, int *data) {
-    float dX = (x1 - x0) / float(width - 1);
-    float dY = (y1 - y0) / float(height - 1);
-    float x, y, Zx, Zy, tZx;
+int computeMandelbrot2(double x0, double y0, double x1, double y1, int width, int height, int iterationsCount, int *data) {
+    double dX = (x1 - x0) / double(width - 1);
+    double dY = (y1 - y0) / double(height - 1);
+    double x, y, Zx, Zy, tZx;
     int sum = 0;
     int i;
     int size = width * height;
@@ -99,8 +99,8 @@ int computeMandelbrot2(float x0, float y0, float x1, float y1, int width, int he
     for (int index = 0; index < size; index++) {
         tmpWidth = index / width;
         tmpHeight = index % width;
-        x = x0 + (float) tmpHeight * dX;
-        y = y0 + (float) tmpWidth * dY;
+        x = x0 + (double) tmpHeight * dX;
+        y = y0 + (double) tmpWidth * dY;
         Zx = x;
         Zy = y;
         i = 0;
@@ -121,14 +121,14 @@ int computeMandelbrot2(float x0, float y0, float x1, float y1, int width, int he
 }
 
 void makePicturePNG(const int *data, int width, int height, int iterationsCount) {
-    float red_value, green_value, blue_value;
-    float scale = 256.0f / (float) iterationsCount;
+    double red_value, green_value, blue_value;
+    double scale = 256.0f / (double) iterationsCount;
 
     pngwriter png(width, height, 1.0, "mandelbrot_output.png");
 
     for (int j = height - 1; j >= 0; j--) {
         for (int i = 0; i < width; i++) {
-            int colorIndex = (int) floor(5.0 * scale * log2f(1.0f * (float) data[j * width + i] + 1));
+            int colorIndex = (int) floor(5.0 * scale * log2f(1.0f * (double) data[j * width + i] + 1));
             red_value = colors[colorIndex][0];
             green_value = colors[colorIndex][2];
             blue_value = colors[colorIndex][1];
@@ -155,10 +155,10 @@ int main(int argc, char **argv) {
         exit(1);
     }
 
-    float x0 = stof(argv[1]);
-    float y0 = stof(argv[2]);
-    float x1 = stof(argv[3]);
-    float y1 = stof(argv[4]);
+    double x0 = stof(argv[1]);
+    double y0 = stof(argv[2]);
+    double x1 = stof(argv[3]);
+    double y1 = stof(argv[4]);
     int width = stoi(argv[5]);
     int height = stoi(argv[6]);
     int iterationsCount = stoi(argv[7]);
@@ -180,13 +180,13 @@ int main(int argc, char **argv) {
 
     time_t end = clock();
 
-    cout << "Computation ended in " << (float) (end - start) / CLOCKS_PER_SEC << "s" << endl;
+    cout << "Computation ended in " << (double) (end - start) / CLOCKS_PER_SEC << "s" << endl;
 
     if (shouldGenerateImage == 1) {
         start = clock();
         makePicturePNG(mandel_data, width, height, iterationsCount);
         end = clock();
 
-        cout << "Generation of image ended in " << (float) (end - start) / CLOCKS_PER_SEC << "s" << endl;
+        cout << "Generation of image ended in " << (double) (end - start) / CLOCKS_PER_SEC << "s" << endl;
     }
 }

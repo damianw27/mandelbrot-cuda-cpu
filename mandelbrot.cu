@@ -12,7 +12,7 @@
 using namespace std;
 #endif
 
-const double colors[41][3] = {
+static const double COLORS[41][3] = {
         {1.0,  1.0,   1.0},
         {1.0,  1.0,   1.0},
         {1.0,  1.0,   1.0},
@@ -56,11 +56,11 @@ const double colors[41][3] = {
         {0.0,  0.0,   0.0}
 };
 
-static int config_2d_width[CONFIG_COUNT_2D] = {2, 4, 8, 16, 32, 64, 128, 256, 512};
-static int config_2d_height[CONFIG_COUNT_2D] = {2, 4, 8, 16, 32, 64, 128, 256, 512};
+static const int CONFIG_2D_HORIZONTAL[CONFIG_COUNT_2D] = {2, 4, 8, 16, 32, 64, 128, 256, 512};
+static const int CONFIG_2D_VERTICAL[CONFIG_COUNT_2D] = {2, 4, 8, 16, 32, 64, 128, 256, 512};
+static const int CONFIG_1D[] = {32, 64, 128, 256, 512, 1024};
 
-__global__ void
-cudaMandelbrot(double x0, double y0, double x1, double y1, int width, int height, int iterationsCount, int *data) {
+__global__ void cudaMandelbrot1(double x0, double y0, double x1, double y1, int width, int height, int iterationsCount, int *data) {
     double dX = (x1 - x0) / double(width - 1);
     double dY = (y1 - y0) / double(height - 1);
     int i;
@@ -90,14 +90,13 @@ cudaMandelbrot(double x0, double y0, double x1, double y1, int width, int height
     }
 }
 
-__global__ void
-cudaMandelbrot2(double x0, double y0, double x1, double y1, int width, int height, int iterationsCount, int *data) {
+__global__ void cudaMandelbrot2(double x0, double y0, double x1, double y1, int width, int height, int iterationsCount, int *data) {
     double dX = (x1 - x0) / double(width - 1);
     double dY = (y1 - y0) / double(height - 1);
     int i;
     double x, y, Zx, Zy, tZx, tZy;
-    double tmpWidth = double((blockIdx.x * blockDim.x) + threadIdx.x);
-    double tmpHeight = double((blockIdx.y * blockDim.y) + threadIdx.y);
+    auto tmpWidth = double((blockIdx.x * blockDim.x) + threadIdx.x);
+    auto tmpHeight = double((blockIdx.y * blockDim.y) + threadIdx.y);
 
     if ((tmpWidth < (double) width) && (tmpHeight < (double) height)) {
         x = x0 + dX * tmpWidth;
@@ -119,8 +118,7 @@ cudaMandelbrot2(double x0, double y0, double x1, double y1, int width, int heigh
     }
 }
 
-int
-computeMandelbrot(double x0, double y0, double x1, double y1, int width, int height, int iterationsCount, int *data) {
+int cpuMandelbrot1(double x0, double y0, double x1, double y1, int width, int height, int iterationsCount, int *data) {
     double dX = (x1 - x0) / double(width - 1);
     double dY = (y1 - y0) / double(height - 1);
     double x, y, Zx, Zy, tZx;
@@ -153,8 +151,7 @@ computeMandelbrot(double x0, double y0, double x1, double y1, int width, int hei
 }
 
 
-int
-computeMandelbrot2(double x0, double y0, double x1, double y1, int width, int height, int iterationsCount, int *data) {
+int cpuMandelbrot2(double x0, double y0, double x1, double y1, int width, int height, int iterationsCount, int *data) {
     double dX = (x1 - x0) / double(width - 1);
     double dY = (y1 - y0) / double(height - 1);
     double x, y, Zx, Zy, tZx;
@@ -187,7 +184,7 @@ computeMandelbrot2(double x0, double y0, double x1, double y1, int width, int he
     return sum;
 }
 
-void makePicturePNG(const int *data, int width, int height, int iterationsCount) {
+void generatePicture(const int *data, int width, int height, int iterationsCount) {
     double red_value, green_value, blue_value;
     double scale = 256.0f / (double) iterationsCount;
 
@@ -195,10 +192,10 @@ void makePicturePNG(const int *data, int width, int height, int iterationsCount)
 
     for (int j = height - 1; j >= 0; j--) {
         for (int i = 0; i < width; i++) {
-            int colorIndex = (int) floor(5.0 * scale * log2f(1.0f * (double) data[j * width + i] + 1));
-            red_value = colors[colorIndex][0];
-            green_value = colors[colorIndex][2];
-            blue_value = colors[colorIndex][1];
+            int colorIndex = (int) floor(5.0 * scale * log2(1.0 * (double) data[j * width + i] + 1));
+            red_value = COLORS[colorIndex][0];
+            green_value = COLORS[colorIndex][2];
+            blue_value = COLORS[colorIndex][1];
             png.plot(i, j, red_value, green_value, blue_value);
         }
     }
@@ -207,101 +204,136 @@ void makePicturePNG(const int *data, int width, int height, int iterationsCount)
 }
 
 int compare(const int *data1, const int *data2, int length) {
-    int sum = 0;
-    int in1, in2;
+    int result = 0;
+    int data1Overflow, data2Overflow;
 
-    for (int i = 0; i < length; i++) {
-        in1 = (data1[i] > 255) ? 1 : 0;
-        in2 = (data2[i] > 255) ? 1 : 0;
-        sum += (int) in1 == in2;
+    for (int index = 0; index < length; index++) {
+        data1Overflow = (data1[index] > 255) ? 1 : 0;
+        data2Overflow = (data2[index] > 255) ? 1 : 0;
+        result += (int) data1Overflow == data2Overflow;
     }
 
-    return sum;
+    return result;
 }
 
-double mean2(double *vec, int len) {
-    double res = 0.0;
+double mean(const double *data, int length) {
+    double result = 0.0;
 
-    for (int i = 0; i < len; i++) {
-        res += vec[i];
+    for (int index = 0; index < length; index++) {
+        result += data[index];
     }
 
-    res = res / len;
-    return res;
+    result = result / length;
+    return result;
 }
 
-double min2(double *vec, int len) {
-    double min = vec[0];
+double min(const double *data, int length) {
+    double minValue = data[0];
 
-    for (int i = 1; i < len; i++) {
-        if (vec[i] >= min) {
+    for (int index = 1; index < length; index++) {
+        if (data[index] >= minValue) {
             continue;
         }
 
-        min = vec[i];
+        minValue = data[index];
     }
 
-    return min;
+    return minValue;
 }
 
-double median2(double *vec, int len) {
-    int *location;
-    double *sorted;
-    int score;
-    double curr;
+int max(const int *data, int length) {
+    int maxValue = data[0];
 
-    location = (int *) malloc(len * sizeof(int));
-    sorted = (double *) malloc(len * sizeof(double));
-
-    for (int i = 0; i < len; i++) {
-        score = 0;
-        curr = vec[i];
-        for (int j = 0; j < len; j++) {
-            if (vec[j] < curr) score++;
+    for (int index = 1; index < length; index++) {
+        if (data[index] <= maxValue) {
+            continue;
         }
-        location[i] = score;
-    }
-    for (int i = 0; i < len; i++) {
-        sorted[location[i]] = vec[i];
+
+        maxValue = data[index];
     }
 
-    return sorted[len / 2];
+    return maxValue;
 }
 
-double standardDeviation2(double *vec, int len) {
-    double avg = mean2(vec, len);
-    double res = 0.0;
+double median(const double *data, int length) {
+    auto *location = new int[length];
+    auto *sorted = new double[length];
+    int currentValueScore;
+    double currentValue;
 
-    for (int i = 0; i < len; i++) {
-        res += (vec[i] - avg) * (vec[i] - avg);
+    for (int outerIndex = 0; outerIndex < length; outerIndex++) {
+        currentValueScore = 0;
+        currentValue = data[outerIndex];
+
+        for (int innerIndex = 0; innerIndex < length; innerIndex++) {
+            if (data[innerIndex] < currentValue)
+                currentValueScore++;
+        }
+
+        location[outerIndex] = currentValueScore;
     }
 
-    res = sqrt(res / len / (len - 1));
-    return res;
+    for (int index = 0; index < length; index++) {
+        sorted[location[index]] = data[index];
+    }
+
+    return sorted[length / 2];
 }
 
-double acceleration2(double Par, double Scal) {
-    return Scal / Par;
+double standardDeviation(double *data, int length) {
+    double dataMeanValue = mean(data, length);
+    double result = 0.0;
+
+    for (int index = 0; index < length; index++) {
+        result += (data[index] - dataMeanValue) * (data[index] - dataMeanValue);
+    }
+
+    result = sqrt(result / length / (length - 1));
+    return result;
 }
 
-void report2D(double *X, int reps, int wid, int hei, double CPU_time) {
+double acceleration(double minCudaTime, double cpuTime) {
+    return cpuTime / minCudaTime;
+}
+
+void report2D(double *results, int localIterationsCount, int width, int height, double cpu_time) {
     double outMin;
     ofstream output("mandelbrot_report.csv", ofstream::out);
     output << "Threads; Median; Mean; SD; Min; Acceleration;" << endl;
 
-    for (int i = 0; i < wid; i++) {
-        for (int j = 0; j < hei; j++) {
-            if (config_2d_width[i] * config_2d_height[j] > 16 && config_2d_width[i] * config_2d_height[j] < 1025) {
-                outMin = min2(&X[(j + i * wid) * reps], reps);
-                output << "(" << config_2d_width[i] << " x " << config_2d_height[j] << "); "
-                       << median2(&X[(j + i * wid) * reps], reps) << "; "
-                       << mean2(&X[(j + i * wid) * reps], reps) << "; "
-                       << standardDeviation2(&X[(j + i * wid) * reps], reps) << "; "
+    for (int i = 0; i < width; i++) {
+        for (int j = 0; j < height; j++) {
+            if (CONFIG_2D_HORIZONTAL[i] * CONFIG_2D_VERTICAL[j] > 16 &&
+                CONFIG_2D_HORIZONTAL[i] * CONFIG_2D_VERTICAL[j] < 1025) {
+                outMin = min(&results[(j + i * width) * localIterationsCount], localIterationsCount);
+                output << "(" << CONFIG_2D_HORIZONTAL[i] << " x " << CONFIG_2D_VERTICAL[j] << "); "
+                       << median(&results[(j + i * width) * localIterationsCount], localIterationsCount) << "; "
+                       << mean(&results[(j + i * width) * localIterationsCount], localIterationsCount) << "; "
+                       << standardDeviation(&results[(j + i * width) * localIterationsCount], localIterationsCount) << "; "
                        << outMin << "; "
-                       << acceleration2(outMin, 1000 * CPU_time) << ";"
+                       << acceleration(outMin, 1000 * cpu_time) << ";"
                        << endl;
             }
         }
+    }
+
+    output.close();
+}
+
+void report1D(double *results, int localIterationsCount, int configurationsCount, double cpuTime) {
+    double outMin;
+    ofstream output("mandelbrot_report.csv", ofstream::out);
+    output << "Threads; Median; Mean; SD; Min; Acceleration;" << endl;
+
+    for (int i = 0; i < configurationsCount; i++) {
+        outMin = min(&results[i * localIterationsCount], localIterationsCount);
+        output << "(" << CONFIG_1D[i] << "); "
+               << median(&results[i * localIterationsCount], localIterationsCount) << "; "
+               << mean(&results[i * localIterationsCount], localIterationsCount) << "; "
+               << standardDeviation(&results[i * localIterationsCount], localIterationsCount) << "; "
+               << outMin << "; "
+               << acceleration(outMin, 1000 * cpuTime) << ";"
+               << endl;
     }
 
     output.close();
@@ -338,125 +370,169 @@ int main(int argc, char **argv) {
 
     cudaError_t status;
 
+    int outImageSize = width * height;
     int *mandel_data_host;
     int *mandel_data_device;
-    int *mandel_data_cpu = (int *) malloc(sizeof(int) * width * height);
+    int *mandel_data_cpu = new int[outImageSize];
 
-    status = cudaMalloc((void **) &mandel_data_device, width * height * sizeof(int));
-
-    if (status != cudaSuccess) {
-        cout << cudaGetErrorString(status) << endl;
-    }
-
-    status = cudaMallocHost((void **) &mandel_data_host, width * height * sizeof(int));
+    status = cudaMalloc((void **) &mandel_data_device, outImageSize * sizeof(int));
 
     if (status != cudaSuccess) {
         cout << cudaGetErrorString(status) << endl;
     }
 
-    time_t start, end;
+    status = cudaMallocHost((void **) &mandel_data_host, outImageSize * sizeof(int));
+
+    if (status != cudaSuccess) {
+        cout << cudaGetErrorString(status) << endl;
+    }
 
     cout << "Starting Mandelbrot (CUDA)" << endl;
     cout << "Corners - start = (" << x0 << ", " << y0 << "); end = (" << x1 << ", " << y1 << ");" << endl;
 
-    start = clock();
+    auto startTime = chrono::steady_clock::now();
+
+    int localIterationsCount;
+    int configurationsCount;
+    double *results;
 
     if (shouldUse2D) {
         cout << "Using version 2D of mandelbrot algorithm." << endl;
-//        cudaMandelbrot2<<<numBlocks, threadsPerBlock, 0>>>(x0, y0, x1, y1, width, height, iterationsCount,mandel_data_device);
 
-        int reps = 10;
-        double *results2D = new double[CONFIG_COUNT_2D * CONFIG_COUNT_2D * reps];
-        int base, loc;
+        localIterationsCount = 10;
+        results = new double[CONFIG_COUNT_2D * CONFIG_COUNT_2D * localIterationsCount];
+        int base, location;
 
         for (int c1 = 0; c1 < CONFIG_COUNT_2D; c1++) {
-            base = CONFIG_COUNT_2D * c1 * reps;
+            base = CONFIG_COUNT_2D * c1 * localIterationsCount;
 
             for (int c2 = 0; c2 < CONFIG_COUNT_2D; c2++) {
-                loc = base + c2 * reps;
+                location = base + c2 * localIterationsCount;
 
-                if (config_2d_width[c1] * config_2d_height[c2] > 16 &&
-                    config_2d_width[c1] * config_2d_height[c2] < 1025) {
-                    int blockWidth = config_2d_width[c1];
-                    int blockHeight = config_2d_height[c2];
+                if (CONFIG_2D_HORIZONTAL[c1] * CONFIG_2D_VERTICAL[c2] > 16 &&
+                    CONFIG_2D_HORIZONTAL[c1] * CONFIG_2D_VERTICAL[c2] < 1025) {
+                    int blockWidth = CONFIG_2D_HORIZONTAL[c1];
+                    int blockHeight = CONFIG_2D_VERTICAL[c2];
                     dim3 threadsPerBlock(blockWidth, blockHeight, 1);
                     dim3 numBlocks(width / blockWidth + 1, height / blockHeight + 1, 1);
 
-                    for (int i = 0; i < reps; i++) {
-                        start = clock();
-                        auto singleBlockStartTime = chrono::steady_clock::now();
+                    for (int index = 0; index < localIterationsCount; index++) {
+                        auto executionStart = chrono::steady_clock::now();
                         cudaMandelbrot2<<<numBlocks, threadsPerBlock, 0>>>(x0, y0, x1, y1, width, height,
                                                                            iterationsCount, mandel_data_device);
                         status = cudaDeviceSynchronize();
 
                         if (status != cudaSuccess) {
                             cout << cudaGetErrorString(status) << endl;
-                        };
+                        }
 
-                        auto singleBlockExecutionTime = chrono::steady_clock::now() - singleBlockStartTime;
-                        results2D[loc + i] = chrono::duration<double, milli>(singleBlockExecutionTime).count();
+                        auto executionTimePoint = chrono::steady_clock::now() - executionStart;
+                        double executionTime = chrono::duration<double, milli>(executionTimePoint).count();
+
+                        cout << "Thread = " << "(" << CONFIG_2D_HORIZONTAL[c1] << ", " << CONFIG_2D_VERTICAL[c2] << ")"
+                             << "; Iteration = " << index
+                             << "; Time = " << executionTime
+                             << "; Base = " << base
+                             << "; Location = " << location
+                             << endl;
+
+                        results[location + index] = executionTime;
                     }
                 } else {
-                    for (int i = 0; i < reps; i++) {
-                        results2D[loc + i] = 1.0 * (i + 1);
+                    for (int i = 0; i < localIterationsCount; i++) {
+                        results[location + i] = 1.0 * (i + 1);
                     }
                 }
             }
         }
-
-        report2D(results2D, reps, CONFIG_COUNT_2D, CONFIG_COUNT_2D, 0);
-
     } else {
-//        cudaMandelbrot<<<numBlocks, threadsPerBlock, 0>>>(x0, y0, x1, y1, width, height, iterationsCount,
-//                                                          mandel_data_device);
+        cout << "Using version 1D of mandelbrot algorithm." << endl;
+
+        localIterationsCount = 15;
+        configurationsCount = 0;
+        results = new double[localIterationsCount * 6];
+
+        for (int currentThreadsCount = 32; currentThreadsCount < 2048; currentThreadsCount = 2 * currentThreadsCount) {
+            dim3 threadsPerBlock(currentThreadsCount, 1, 1);
+            dim3 numBlocks(width * height / currentThreadsCount + 1, 1, 1);
+
+            for (int index = 0; index < localIterationsCount; index++) {
+                auto executionStart = chrono::steady_clock::now();
+                cudaMandelbrot1<<<numBlocks, threadsPerBlock, 0>>>(x0, y0, x1, y1, width, height, iterationsCount,
+                                                                   mandel_data_device);
+                status = cudaDeviceSynchronize();
+
+                if (status != cudaSuccess) {
+                    cout << cudaGetErrorString(status) << endl;
+                }
+
+                auto executionStop = chrono::steady_clock::now();
+                auto executionTimePoint = executionStop - executionStart;
+                auto executionTime = chrono::duration<double, milli>(executionTimePoint).count();
+
+                cout << "Thread " << currentThreadsCount
+                     << "; Iteration " << index
+                     << "; Time " << executionTime << " ms"
+                     << endl;
+
+                results[configurationsCount * localIterationsCount + index] = executionTime;
+            }
+
+            configurationsCount++;
+        }
     }
 
-    status = cudaDeviceSynchronize();
+    status = cudaMemcpy(mandel_data_host, mandel_data_device, outImageSize * sizeof(int), cudaMemcpyDeviceToHost);
 
     if (status != cudaSuccess) {
         cout << cudaGetErrorString(status) << endl;
     }
 
-    auto stop = chrono::steady_clock::now();
-
-    status = cudaMemcpy(mandel_data_host, mandel_data_device, width * height * sizeof(int), cudaMemcpyDeviceToHost);
-
-    if (status != cudaSuccess) {
-        cout << cudaGetErrorString(status) << endl;
-    }
-
-    end = clock();
-
-    cout << "Computation and data transfer ended in " << (double) (end - start) / CLOCKS_PER_SEC << "s" << endl;
+    auto endTime = chrono::steady_clock::now();
+    auto fullComputationTimePoint = endTime - startTime;
+    auto fullComputationTime = chrono::duration<double, milli>(fullComputationTimePoint).count() / 1000;
+    cout << "Computation and data transfer ended in " << fullComputationTime << "s" << endl;
 
     if (shouldGenerateImage == 1) {
-        start = clock();
-        makePicturePNG(mandel_data_host, width, height, iterationsCount);
-        end = clock();
-        cout << "Generation of image ended in " << (double) (end - start) / CLOCKS_PER_SEC << "s" << endl;
+        int maxValue = max(mandel_data_host, outImageSize);
+        auto pictureGenerationStart = chrono::steady_clock::now();
+        generatePicture(mandel_data_host, width, height, maxValue);
+        auto pictureGenerationEnd = chrono::steady_clock::now();
+        auto pictureGenerationTimePoint = pictureGenerationEnd - pictureGenerationStart;
+        auto pictureGenerationTime = chrono::duration<double, milli>(pictureGenerationTimePoint).count() / 1000;
+        cout << "Generation of image ended in " << pictureGenerationTime << "s" << endl;
     }
 
     status = cudaFree(mandel_data_device);
+
     if (status != cudaSuccess) {
         cout << cudaGetErrorString(status) << endl;
     }
 
     if (shouldCompare == 1) {
-        start = clock();
+        auto cpuTimeStart = chrono::steady_clock::now();
 
         if (shouldUse2D == 1) {
-            computeMandelbrot2(x0, y0, x1, y1, width, height, iterationsCount, mandel_data_cpu);
+            cpuMandelbrot2(x0, y0, x1, y1, width, height, iterationsCount, mandel_data_cpu);
         } else {
-            computeMandelbrot(x0, y0, x1, y1, width, height, iterationsCount, mandel_data_cpu);
+            cpuMandelbrot1(x0, y0, x1, y1, width, height, iterationsCount, mandel_data_cpu);
         }
 
-        end = clock();
-
+        auto cpuTimeEnd = chrono::steady_clock::now();
+        auto cpuTimePoint = cpuTimeEnd - cpuTimeStart;
+        auto cpuTime = 1.0 * chrono::duration<double, milli>(cpuTimePoint).count() / 1000;
         int pixelsCount = height * width;
         int samePixelsCount = compare(mandel_data_host, mandel_data_cpu, pixelsCount);
-        cout << "Comparing CUDA with CPU ended in " << (double) (end - start) / CLOCKS_PER_SEC << "s" << endl;
+
+        cout << "Comparing CUDA with CPU ended in " << cpuTime << "s" << endl;
         cout << "Comparison result in pixels: " << samePixelsCount << " out of " << pixelsCount << "pixels." << endl;
         cout << "Comparison result in percentage: " << 100.0 * samePixelsCount / height / width << "%" << endl;
+
+        if (shouldUse2D == 1) {
+            report2D(results, localIterationsCount, CONFIG_COUNT_2D, CONFIG_COUNT_2D, cpuTime);
+        } else {
+            report1D(results, localIterationsCount, configurationsCount, cpuTime);
+        }
     }
 
     status = cudaFreeHost(mandel_data_host);

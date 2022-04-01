@@ -10,7 +10,7 @@
 using namespace std;
 #endif
 
-const double colors[41][3] = {
+const double COLORS[41][3] = {
         {1.0,  1.0,   1.0},
         {1.0,  1.0,   1.0},
         {1.0,  1.0,   1.0},
@@ -54,7 +54,7 @@ const double colors[41][3] = {
         {0.0,  0.0,   0.0}
 };
 
-int computeMandelbrot(double x0, double y0, double x1, double y1, int width, int height, int iterationsCount, int *data) {
+int cpuMandelbrot1(double x0, double y0, double x1, double y1, int width, int height, int iterationsCount, int *data) {
     double dX = (x1 - x0) / double(width - 1);
     double dY = (y1 - y0) / double(height - 1);
     double x, y, Zx, Zy, tZx;
@@ -87,7 +87,7 @@ int computeMandelbrot(double x0, double y0, double x1, double y1, int width, int
 }
 
 
-int computeMandelbrot2(double x0, double y0, double x1, double y1, int width, int height, int iterationsCount, int *data) {
+int cpuMandelbrot2(double x0, double y0, double x1, double y1, int width, int height, int iterationsCount, int *data) {
     double dX = (x1 - x0) / double(width - 1);
     double dY = (y1 - y0) / double(height - 1);
     double x, y, Zx, Zy, tZx;
@@ -120,7 +120,7 @@ int computeMandelbrot2(double x0, double y0, double x1, double y1, int width, in
     return sum;
 }
 
-void makePicturePNG(const int *data, int width, int height, int iterationsCount) {
+void generatePicture(const int *data, int width, int height, int iterationsCount) {
     double red_value, green_value, blue_value;
     double scale = 256.0f / (double) iterationsCount;
 
@@ -129,9 +129,9 @@ void makePicturePNG(const int *data, int width, int height, int iterationsCount)
     for (int j = height - 1; j >= 0; j--) {
         for (int i = 0; i < width; i++) {
             int colorIndex = (int) floor(5.0 * scale * log2f(1.0f * (double) data[j * width + i] + 1));
-            red_value = colors[colorIndex][0];
-            green_value = colors[colorIndex][2];
-            blue_value = colors[colorIndex][1];
+            red_value = COLORS[colorIndex][0];
+            green_value = COLORS[colorIndex][2];
+            blue_value = COLORS[colorIndex][1];
             png.plot(i, j, red_value, green_value, blue_value);
         }
     }
@@ -173,9 +173,9 @@ int main(int argc, char **argv) {
 
     if (shouldUse2D) {
         cout << "Using version 2D of mandelbrot algorithm." << endl;
-        computeMandelbrot(x0, y0, x1, y1, width, height, iterationsCount, mandel_data);
+        cpuMandelbrot1(x0, y0, x1, y1, width, height, iterationsCount, mandel_data);
     } else {
-        computeMandelbrot2(x0, y0, x1, y1, width, height, iterationsCount, mandel_data);
+        cpuMandelbrot2(x0, y0, x1, y1, width, height, iterationsCount, mandel_data);
     }
 
     time_t end = clock();
@@ -184,7 +184,7 @@ int main(int argc, char **argv) {
 
     if (shouldGenerateImage == 1) {
         start = clock();
-        makePicturePNG(mandel_data, width, height, iterationsCount);
+        generatePicture(mandel_data, width, height, iterationsCount);
         end = clock();
 
         cout << "Generation of image ended in " << (double) (end - start) / CLOCKS_PER_SEC << "s" << endl;
